@@ -292,19 +292,33 @@ final class FeedStream: NSView {
           window.scrollTo({ top: top, behavior: smooth ? 'smooth' : 'instant' });
           return cur;
         }
-        // The email you're looking at: the one under a line a third of the
-        // way down the view — so a card whose tail is still at the top
-        // doesn't keep the focus once the next one fills the screen.
+        // The email you're looking at. One that starts in view at the top
+        // wins (a short email above a long one is still yours to act on);
+        // otherwise the one under a line a third of the way down, so a tail
+        // left over at the top doesn't keep the focus. A j/k or a click
+        // pins the choice until the page is scrolled by hand.
+        var pinned = null;
         function here() {
           const a = arts(); if (!a.length) return 0;
-          const line = window.scrollY + window.innerHeight / 3;
+          if (pinned && pinned.y === Math.round(window.scrollY)) {
+            const i = a.findIndex(x => x.id === pinned.id); if (i >= 0) return i;
+          }
+          pinned = null;
+          const top = window.scrollY, line = top + window.innerHeight / 3;
           for (let j = 0; j < a.length; j++) {
-            const top = a[j].offsetTop, bottom = top + a[j].offsetHeight;
-            if (line < bottom) return j;
+            const t = a[j].offsetTop, b = t + a[j].offsetHeight;
+            if (b <= top + 8) continue;               // scrolled past
+            if (t >= top - 8) return j;               // starts in view: first such is it
+            if (line < b) return j;                   // its tail covers the upper third
           }
           return a.length - 1;
         }
-        function step(d) { return go(here() + d, true); }
+        function pin(i) { const a = arts(); if (a[i]) setTimeout(() => { pinned = { id: a[i].id, y: Math.round(window.scrollY) }; }, 450); }
+        document.addEventListener('click', e => {
+          const art = e.target.closest && e.target.closest('article'); if (!art) return;
+          const i = arts().indexOf(art); mark(i); pinned = { id: art.id, y: Math.round(window.scrollY) };
+        }, true);
+        function step(d) { const i = go(here() + d, true); pin(i); return i; }
         """
     }
 }
