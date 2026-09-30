@@ -163,7 +163,7 @@ public enum Category: String, CaseIterable {
 }
 
 public enum View: Equatable, Hashable {
-    case inbox, notifications, feed, paper, newSenders, spam, muted, calendar, sent, all
+    case inbox, codes, notifications, feed, paper, newSenders, spam, muted, calendar, sent, all
     case search(String)
 
     public var key: String {
@@ -178,6 +178,7 @@ public enum View: Equatable, Hashable {
         case .calendar: return "calendar"
         case .sent: return "sent"
         case .all: return "all"
+        case .codes: return "codes"
         case .search: return "search"
         }
     }
@@ -194,11 +195,15 @@ public enum View: Equatable, Hashable {
         case .calendar: return "Calendar"
         case .sent: return "Sent"
         case .all: return "All"
+        case .codes: return "Codes"
         case .search(let q): return "“\(q)”"
         }
     }
 
-    public static let tabs: [View] = [.inbox, .feed, .calendar, .paper, .notifications, .muted, .newSenders]
+    public static let tabs: [View] = [.inbox, .codes, .feed, .calendar, .paper, .notifications, .muted, .newSenders]
+
+    /// Tabs that only show while something is in them.
+    public var hiddenWhenEmpty: Bool { self == .newSenders || self == .codes }
 
     public init?(key: String) {
         switch key {
@@ -212,6 +217,7 @@ public enum View: Equatable, Hashable {
         case "calendar": self = .calendar
         case "sent": self = .sent
         case "all": self = .all
+        case "codes": self = .codes
         default: return nil
         }
     }

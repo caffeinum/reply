@@ -375,6 +375,7 @@ public final class Store {
 
     public func threads(_ box: Mailbox, _ view: View, limit: Int = 200, offset: Int = 0) -> [ThreadSummary] {
         if case .search(let q) = view { return search(box, q, limit: limit) }
+        if view == .codes { return codes(box).map(\.0) }
         let (w, args) = scope(box)
         if let f = Self.labelFilter(view) {
             return (try? db.query("""
@@ -396,10 +397,21 @@ public final class Store {
         }
     }
 
+    /// Mail from the last half hour carrying a sign-in code, and the code.
+    public func codes(_ box: Mailbox, now: Date = Date()) -> [(ThreadSummary, String)] {
+        let (w, args) = scope(box)
+        let since = Int64(now.timeIntervalSince1970 * 1000) - Codes.window
+        let recent = (try? db.query("""
+            SELECT \(Self.cols) FROM threads WHERE \(w) AND date>=? AND \(Self.labelFilter(.all)!) ORDER BY date DESC
+            """, args + [since], map: summary)) ?? []
+        return recent.compactMap { t in Codes.find(subject: t.subject, snippet: t.snippet).map { (t, $0) } }
+    }
+
     public func count(_ box: Mailbox, _ view: View) -> Int {
         // New Senders counts people, not threads: you decide once per sender.
         let what = view == .newSenders ? "count(DISTINCT account || sender_email)" : "count(*)"
         let (w, args) = scope(box)
+        if view == .codes { return codes(box).count }
         if let f = Self.labelFilter(view) { return (try? db.query("SELECT count(*) FROM threads WHERE \(w) AND \(f)", args) { $0.int(0) }.first) ?? 0 }
         return (try? db.query("SELECT \(what) FROM threads WHERE \(w) AND view=?", args + [view.key]) { $0.int(0) }.first) ?? 0
     }

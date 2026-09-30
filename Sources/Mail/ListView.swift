@@ -72,6 +72,8 @@ final class ListView: NSScrollView, NSTableViewDataSource, NSTableViewDelegate {
     var onFold: ((Set<String>) -> Void)?
     /// Muted mail is shown as read, whatever its state.
     var forceRead = false
+    /// Codes view: the sign-in code each thread carries, drawn before its subject.
+    var codes: [String: String] = [:]
 
     let table = NSTableView()
     private(set) var rows: [ThreadSummary] = []
@@ -400,6 +402,7 @@ final class ListView: NSScrollView, NSTableViewDataSource, NSTableViewDelegate {
             let v = (tableView.makeView(withIdentifier: ThreadRow.id, owner: nil) as? ThreadRow) ?? ThreadRow()
             v.indent = grouped ? 26 : 0
             v.forceRead = forceRead
+            v.code = codes[rows[i].id]
             v.suggest = suggest
             v.accountTag = accountTags.isEmpty ? nil : accountTags[rows[i].account + "\u{1}" + rows[i].alias]
             v.thread = rows[i]
@@ -528,6 +531,7 @@ final class ThreadRow: NSView {
     var accountTag: String?
     var indent: CGFloat = 0
     var forceRead = false
+    var code: String?
 
     override init(frame: NSRect) { super.init(frame: frame); identifier = Self.id }
     required init?(coder: NSCoder) { fatalError() }
@@ -574,6 +578,11 @@ final class ThreadRow: NSView {
         let line = NSMutableAttributedString(string: t.subject.isEmpty ? "(no subject)" : t.subject, attributes: [
             .font: unread ? Style.bold : Style.body, .foregroundColor: Palette.text,
         ])
+        if let code {
+            line.insert(NSAttributedString(string: code + "   ", attributes: [
+                .font: NSFont.monospacedSystemFont(ofSize: 14, weight: .semibold), .foregroundColor: Palette.accent,
+            ]), at: 0)
+        }
         line.append(NSAttributedString(string: "   " + t.snippet, attributes: [
             .font: Style.body, .foregroundColor: Palette.secondary,
         ]))

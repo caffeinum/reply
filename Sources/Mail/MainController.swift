@@ -198,6 +198,7 @@ final class MainController: NSObject, NSWindowDelegate, NSSearchFieldDelegate {
         list.accountTags = box.isAll ? Dictionary(boxes.map { ($0.account + "\u{1}" + ($0.alias?.address.lowercased() ?? ""), $0.title) }, uniquingKeysWith: { a, _ in a }) : [:]
         list.footer = olderFooter()
         var rows = store.threads(box, view, limit: 20000)
+        list.codes = view == .codes ? Dictionary(store.codes(box).map { ($0.0.id, $0.1) }, uniquingKeysWith: { a, _ in a }) : [:]
         if view == .newSenders {
             list.expanded = Set((store.get("ui.ns.open") ?? "").split(separator: "\n").map(String.init))
             list.senderLatest = store.senderLatest(box)
@@ -381,7 +382,7 @@ final class MainController: NSObject, NSWindowDelegate, NSSearchFieldDelegate {
     /// waiting) and round again.
     func cycleStream(_ d: Int) {
         guard let box else { return }
-        let tabs = View.tabs.filter { $0 != .newSenders || store.count(box, .newSenders) > 0 }
+        let tabs = View.tabs.filter { !$0.hiddenWhenEmpty || store.count(box, $0) > 0 }
         let i = tabs.firstIndex(of: lastTab) ?? 0
         go(tabs[(i + d + tabs.count) % tabs.count])
     }
@@ -404,6 +405,7 @@ final class MainController: NSObject, NSWindowDelegate, NSSearchFieldDelegate {
     private var olderAccounts: [String] {
         guard let box else { return [] }
         if case .search = view { return [] }
+        if view == .codes { return [] }
         return box.isAll ? store.config.accounts.map(\.email) : [box.account]
     }
 
@@ -618,6 +620,13 @@ final class MainController: NSObject, NSWindowDelegate, NSSearchFieldDelegate {
         reloadList(keepSender: keepKey)
         let title = placements.count == 1 ? actions.title(for: placements[0].category) : "Placed \(placements.count) senders"
         toast.show("\(title)  ·  z to undo")
+    }
+
+    private func copyCode() {
+        guard let t = list.selected, let code = list.codes[t.id] else { NSSound.beep(); return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(code.filter { $0 != " " }, forType: .string)
+        toast.show("Copied \(code)")
     }
 
     func compose(_ mode: ReplyMode) {
@@ -945,6 +954,7 @@ final class MainController: NSObject, NSWindowDelegate, NSSearchFieldDelegate {
         case "I": loadImages(always: true)
         case "/": startSearch()
         case "?": toggleHelp()
+        case "c" where view == .codes: copyCode()
         case "c": compose(.new)
         case "r": compose(.reply)
         case "R": compose(.replyAll)

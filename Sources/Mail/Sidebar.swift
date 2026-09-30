@@ -55,7 +55,7 @@ final class Sidebar: NSView {
         stack.addArrangedSubview(heading("STREAMS"))
         for v in View.tabs {
             let n = counts[v] ?? 0
-            if v == .newSenders && n == 0 { continue }
+            if v.hiddenWhenEmpty && n == 0 && v != view { continue }
             let trailing: SidebarItem.Trailing = v == .newSenders ? .badge("\(n)") : .count(n > 0 ? "\(n)" : "")
             let on: Bool = { if case .search = view { return false }; return v == view }()
             add(SidebarItem(title: v.title, trailing: trailing, on: on) { [weak self] in self?.onStream?(v) })
