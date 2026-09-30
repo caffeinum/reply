@@ -100,6 +100,7 @@ public actor AccountSync {
         let page = try await gmail.threads(query: query, max: pageSize, pageToken: token?.isEmpty == false ? token : nil)
         let missing = page.refs.map(\.id).filter { store.thread(account: account, id: $0) == nil }
         if !missing.isEmpty { try await fetchThreads(missing, format: .metadata) }
+        if query == "filename:ics" { try store.markInvites(account: account, threads: page.refs.map(\.id)) }
         store.set(key, page.next ?? "done")
         if missing.isEmpty && page.next != nil { return true }
         log("\(account): backfilled \(missing.count) older threads for \(query)\(page.next == nil ? " — all cached" : "")")

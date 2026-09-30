@@ -404,8 +404,7 @@ final class MainController: NSObject, NSWindowDelegate, NSSearchFieldDelegate {
 
     private var olderAccounts: [String] {
         guard let box else { return [] }
-        if case .search = view { return [] }
-        if view == .codes { return [] }
+        guard view.olderQuery != nil else { return [] }
         return box.isAll ? store.config.accounts.map(\.email) : [box.account]
     }
 
@@ -414,7 +413,7 @@ final class MainController: NSObject, NSWindowDelegate, NSSearchFieldDelegate {
         guard !accounts.isEmpty else { return nil }
         if accounts.contains(where: pagingNow.contains) { return "Loading older mail…" }
         if accounts.contains(where: { engine.olderFailed.contains($0) }) { return "Couldn't load older mail — ⌘R to try again" }
-        return accounts.contains(where: engine.hasOlder) ? "Scroll for older mail" : "That's everything"
+        return accounts.contains(where: { engine.hasOlder($0, view.olderQuery!) }) ? "Scroll for older mail" : "That's everything"
     }
 
     private var rowsBeforePage = 0
@@ -436,7 +435,8 @@ final class MainController: NSObject, NSWindowDelegate, NSSearchFieldDelegate {
     func loadOlder() {
         guard Date().timeIntervalSince(lastOlder) > 0.5 else { return }
         lastOlder = Date()
-        for a in olderAccounts where engine.hasOlder(a) { Task { await engine.older(a) } }
+        guard let q = view.olderQuery else { return }
+        for a in olderAccounts where engine.hasOlder(a, q) { Task { await engine.older(a, q) } }
     }
 
     func boxFor(_ t: ThreadSummary) -> Mailbox? {

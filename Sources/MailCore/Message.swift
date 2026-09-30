@@ -202,6 +202,25 @@ public enum View: Equatable, Hashable {
 
     public static let tabs: [View] = [.inbox, .codes, .feed, .calendar, .paper, .notifications, .muted, .newSenders]
 
+    /// What to ask gmail for when this view scrolls past what's cached.
+    /// Streams page their label and the inbox together: what Jev sorted
+    /// while writes were off still sits in the inbox.
+    public var olderQuery: String? {
+        func stream(_ label: String) -> String { "{in:inbox label:\(label.replacingOccurrences(of: "/", with: "-"))}" }
+        switch self {
+        case .inbox, .newSenders: return "in:inbox"
+        case .feed: return stream(Streams.feed)
+        case .paper: return stream(Streams.paper)
+        case .notifications: return stream(Streams.notifications)
+        case .muted: return stream(Streams.muted)
+        case .calendar: return "filename:ics"
+        case .sent: return "in:sent"
+        case .spam: return "in:spam"
+        case .all: return "-in:spam -in:trash"
+        case .codes, .search: return nil
+        }
+    }
+
     /// Tabs that only show while something is in them.
     public var hiddenWhenEmpty: Bool { self == .newSenders || self == .codes }
 

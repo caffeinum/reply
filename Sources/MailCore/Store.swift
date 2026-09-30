@@ -416,6 +416,10 @@ public final class Store {
         return (try? db.query("SELECT \(what) FROM threads WHERE \(w) AND view=?", args + [view.key]) { $0.int(0) }.first) ?? 0
     }
 
+    public func threadCount(_ account: String) -> Int {
+        (try? db.query("SELECT count(*) FROM threads WHERE account=?", account) { $0.int(0) }.first) ?? 0
+    }
+
     public func thread(account: String, id: String) -> ThreadSummary? {
         try? db.query("SELECT \(Self.cols) FROM threads WHERE account=? AND id=?", account, id, map: summary).first
     }

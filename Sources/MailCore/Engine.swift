@@ -20,8 +20,8 @@ public final class Engine: @unchecked Sendable {
     /// Called on the main queue when paging back through old mail starts or stops.
     public var onPaging: ((String, Bool) -> Void)?
 
-    /// Whether gmail may still have older inbox mail for this account.
-    public func hasOlder(_ account: String) -> Bool { store.get("backfill.\(account).in:inbox") != "done" }
+    /// Whether gmail may still have older mail for this account and query.
+    public func hasOlder(_ account: String, _ query: String = "in:inbox") -> Bool { store.get("backfill.\(account).\(query)") != "done" }
 
     public init(store: Store) {
         self.store = store
@@ -90,7 +90,7 @@ public final class Engine: @unchecked Sendable {
 
     /// Older mail, a page at a time: once per sync in the background until
     /// the inbox is fully cached, and at once when the list nears its end.
-    public func older(_ account: String) async {
+    public func older(_ account: String, _ query: String = "in:inbox") async {
         guard let s = syncs[account] else { return }
         let start: Bool = await MainActor.run { paging.insert(account).inserted }
         guard start else { return }
@@ -100,9 +100,9 @@ public final class Engine: @unchecked Sendable {
             // Pages already in the cache cost one list call each; keep going
             // until something older actually arrives (or there's no more).
             for _ in 0..<20 {
-                let before = store.count(Mailbox(account: account, kind: .gmail, title: ""), .inbox)
-                guard try await s.backfill("in:inbox") else { break }
-                if store.count(Mailbox(account: account, kind: .gmail, title: ""), .inbox) != before { break }
+                let before = store.threadCount(account)
+                guard try await s.backfill(query) else { break }
+                if store.threadCount(account) != before { break }
             }
             await MainActor.run { _ = self.olderFailed.remove(account) }
             DispatchQueue.main.async { self.onChange?(account) }
