@@ -66,8 +66,10 @@ final class HeaderBar: NSView {
         title.stringValue = view.title
         leadInset?.constant = sidebarShown ? 28 : 84
         tabs.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        // Views off the tab row (All, Sent, Spam) show as a tab while open.
         tabViews = View.tabs
-        for (i, v) in View.tabs.enumerated() {
+        if !tabViews.contains(view), view.key != "search" { tabViews.append(view) }
+        for (i, v) in tabViews.enumerated() {
             let n = counts[v] ?? 0
             var title = v.title
             if v == .newSenders { if n == 0 { continue }; title += " \(n)" }
@@ -182,7 +184,7 @@ final class HelpOverlay: Overlay {
         ("j / k", "next / previous"), ("g g / G", "top / bottom"), ("o / ↩", "open"), ("u / esc", "back"),
         ("e", "done (out of the inbox)"), ("#", "trash"), ("!", "spam (again in Spam: not spam)"), ("g x", "spam folder"), ("M", "mute sender (g m: Muted)"), ("U", "read / unread"), ("z", "undo"),
         ("/", "search"), ("⌘K", "command palette"), ("c", "new message"), ("r / R / F", "reply / reply all / forward"),
-        ("⌘↩", "send"), ("tab / ⇧tab", "next / previous stream"), ("g i · g f · g c · g p · g o · g n · g t", "inbox · feed · calendar · paper trail · notifications · new senders · sent"),
+        ("⌘↩", "send"), ("tab / ⇧tab", "next / previous stream"), ("g i · g f · g c · g p · g o · g n · g t · g a", "inbox · feed · calendar · paper trail · notifications · new senders · sent · all"),
         ("⌃1 ⌃2 ⌃3", "switch account"), ("a · s · p · n · x · y", "new senders: inbox · feed · paper trail · notifications · block · as proposed"), ("› / ‹  ·  ⌘A", "unfold / fold a sender · select the whole section"),
         ("i / ⇧I", "images for this email / always from sender"), ("m", "move sender to inbox · feed · paper trail"), ("v", "feed as stream / list"),
         ("space", "scroll"), ("⌘R", "check for mail"), ("⌘,", "accounts"), ("?", "this card"),

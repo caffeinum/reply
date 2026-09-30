@@ -376,9 +376,9 @@ public final class Store {
     public func threads(_ box: Mailbox, _ view: View, limit: Int = 200, offset: Int = 0) -> [ThreadSummary] {
         if case .search(let q) = view { return search(box, q, limit: limit) }
         let (w, args) = scope(box)
-        if view == .sent {
+        if let f = Self.labelFilter(view) {
             return (try? db.query("""
-                SELECT \(Self.cols) FROM threads WHERE \(w) AND labels LIKE '% SENT %' ORDER BY date DESC LIMIT ? OFFSET ?
+                SELECT \(Self.cols) FROM threads WHERE \(w) AND \(f) ORDER BY date DESC LIMIT ? OFFSET ?
                 """, args + [limit, offset], map: summary)) ?? []
         }
         return (try? db.query("""
@@ -386,11 +386,21 @@ public final class Store {
             """, args + [view.key, limit, offset], map: summary)) ?? []
     }
 
+    /// Views cut by gmail labels rather than by our sorting: Sent, and All
+    /// (everything but spam and trash, whatever stream it went to).
+    private static func labelFilter(_ view: View) -> String? {
+        switch view {
+        case .sent: return "labels LIKE '% SENT %'"
+        case .all: return "labels NOT LIKE '% SPAM %' AND labels NOT LIKE '% TRASH %'"
+        default: return nil
+        }
+    }
+
     public func count(_ box: Mailbox, _ view: View) -> Int {
         // New Senders counts people, not threads: you decide once per sender.
         let what = view == .newSenders ? "count(DISTINCT account || sender_email)" : "count(*)"
         let (w, args) = scope(box)
-        if view == .sent { return (try? db.query("SELECT count(*) FROM threads WHERE \(w) AND labels LIKE '% SENT %'", args) { $0.int(0) }.first) ?? 0 }
+        if let f = Self.labelFilter(view) { return (try? db.query("SELECT count(*) FROM threads WHERE \(w) AND \(f)", args) { $0.int(0) }.first) ?? 0 }
         return (try? db.query("SELECT \(what) FROM threads WHERE \(w) AND view=?", args + [view.key]) { $0.int(0) }.first) ?? 0
     }
 

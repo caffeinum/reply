@@ -888,6 +888,7 @@ final class MainController: NSObject, NSWindowDelegate, NSSearchFieldDelegate {
             case "o": go(.notifications)
             case "c": go(.calendar)
             case "t": go(.sent)
+            case "a": go(.all)
             case "f": go(.feed)
             case "p": go(.paper)
             case "n", "s": go(.newSenders)

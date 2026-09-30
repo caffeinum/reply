@@ -163,7 +163,7 @@ public enum Category: String, CaseIterable {
 }
 
 public enum View: Equatable, Hashable {
-    case inbox, notifications, feed, paper, newSenders, spam, muted, calendar, sent
+    case inbox, notifications, feed, paper, newSenders, spam, muted, calendar, sent, all
     case search(String)
 
     public var key: String {
@@ -177,6 +177,7 @@ public enum View: Equatable, Hashable {
         case .muted: return "muted"
         case .calendar: return "calendar"
         case .sent: return "sent"
+        case .all: return "all"
         case .search: return "search"
         }
     }
@@ -192,6 +193,7 @@ public enum View: Equatable, Hashable {
         case .muted: return "Muted"
         case .calendar: return "Calendar"
         case .sent: return "Sent"
+        case .all: return "All"
         case .search(let q): return "“\(q)”"
         }
     }
@@ -209,6 +211,7 @@ public enum View: Equatable, Hashable {
         case "muted": self = .muted
         case "calendar": self = .calendar
         case "sent": self = .sent
+        case "all": self = .all
         default: return nil
         }
     }
