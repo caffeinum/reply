@@ -74,6 +74,16 @@ func msg(_ id: String, thread: String, from: String, subject: String = "hi", lab
         #expect(s.threads(box, .newSenders).map(\.id) == ["b"])
     }
 
+    @Test func superhumanBumpBringsTheThreadBackWithoutBeingASender() throws {
+        let s = try tempStore()
+        try s.upsert([msg("1", thread: "a", from: "news@substack.com", subject: "weekly", labels: [], date: 1)])
+        try place(s, [("news@substack.com", "feed")])
+        try s.upsert([msg("2", thread: "a", from: "reminder@superhuman.com", subject: "weekly", date: 2)])
+        #expect(s.threads(box, .inbox).map(\.id) == ["a"])
+        #expect(s.threads(box, .inbox).first?.senderEmail == "news@substack.com")
+        #expect(s.threads(box, .newSenders).isEmpty)
+    }
+
     @Test func searchFindsByPrefix() throws {
         let s = try tempStore()
         try s.upsert([msg("1", thread: "a", from: "ann@acme.com", subject: "Invoice for September"),

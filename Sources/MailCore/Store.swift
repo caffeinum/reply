@@ -27,7 +27,7 @@ public final class Store {
 
     public static let schemaVersion = 8
     /// Bump when how threads are placed changes: the cache re-sorts on open.
-    public static let sortingVersion = 15
+    public static let sortingVersion = 16
 
     private func migrate() throws {
         let v = try db.scalar("PRAGMA user_version")
@@ -278,7 +278,10 @@ public final class Store {
         let union = Set(msgs.flatMap(\.labels))
         let inInbox = union.contains("INBOX")
         let alias = msgs.compactMap { $0.duckTo?.lowercased() }.first { aliases.contains($0) } ?? ""
-        let inbound = msgs.last { !mine.contains($0.shownFrom?.normalized ?? "") && !Composer.isSelfRelay($0.from, mine: mine) }
+        // A Superhuman remind-me bump isn't a sender: it only says the thread is back.
+        let bumped = inInbox && Self.isBump(last)
+        let real = msgs.filter { !Self.isBump($0) }
+        let inbound = real.last { !mine.contains($0.shownFrom?.normalized ?? "") && !Composer.isSelfRelay($0.from, mine: mine) }
         let senderAddr = inbound?.shownFrom
         // Mail from a list is the list's: one sender to place, not one per poster.
         let list = inbound?.list
@@ -315,6 +318,7 @@ public final class Store {
         let invite = ((try? db.scalar("SELECT count(*) FROM invites WHERE account=? AND thread_id=?", account, id)) ?? 0) > 0
         if union.contains("SPAM") { view = "spam" }
         else if gone || decided == "blocked" { view = "" }
+        else if bumped { view = "inbox" }
         else if decided == "muted" || (mutedID.map(union.contains) ?? false) { view = "muted" }
         else if invite && inInbox { view = "calendar" }
         else if pending && inInbox { view = "new" }
@@ -328,10 +332,12 @@ public final class Store {
                 date=excluded.date, subject=excluded.subject, snippet=excluded.snippet, sender=excluded.sender,
                 sender_email=excluded.sender_email, unread=excluded.unread, count=excluded.count, labels=excluded.labels,
                 has_body=excluded.has_body, people=excluded.people
-            """, [account, id, alias, view, category?.rawValue ?? "", last.date, msgs.first?.subject ?? "", last.snippet, sender,
+            """, [account, id, alias, view, category?.rawValue ?? "", last.date, msgs.first?.subject ?? "", (real.last ?? last).snippet, sender,
                   senderEmail, union.contains("UNREAD"), msgs.count, Self.labelText(Array(union).sorted()),
-                  msgs.allSatisfy(\.hasBody), Self.people(msgs, mine: mine)])
+                  msgs.allSatisfy(\.hasBody), Self.people(real, mine: mine)])
     }
+
+    static func isBump(_ m: MessageRecord) -> Bool { m.shownFrom?.normalized == "reminder@superhuman.com" }
 
     private func summary(_ r: Row) -> ThreadSummary {
         ThreadSummary(account: r.text(0), id: r.text(1), date: r.int64(2), subject: r.text(3), snippet: r.text(4),
